@@ -66,7 +66,7 @@ func (c *Client) GrabSession(urlStr string) error {
 		return err
 	}
 
-	req.Header.Add("Cookie", "ASP.NET_SessionId=rh4xkq45w3cgearhtxmdgx45")
+	// req.Header.Add("Cookie", "ASP.NET_SessionId=rh4xkq45w3cgearhtxmdgx45")
 	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Add("Accept-Encoding", "gzip, deflate, br")
 	req.Header.Add("Host", "propaccess.trueautomation.com")
