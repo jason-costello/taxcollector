@@ -1,0 +1,826 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<HTML>
+<HEAD>
+    <title>Comal CAD  - Property Details</title>
+    <meta http-equiv=Content-Type content="text/html; charset=iso-8859-1">
+    <meta content="Microsoft Visual Studio .NET 7.1" name=GENERATOR>
+    <meta content=C# name=CODE_LANGUAGE>
+    <meta content=JavaScript name=vs_defaultClientScript>
+    <meta content=http://schemas.microsoft.com/intellisense/ie5 name=vs_targetSchema>
+    <LINK href="styles/global.css" type=text/css rel=stylesheet>
+    <LINK media=handheld href="styles/handheld.css" type=text/css rel=stylesheet>
+    <link href="styles/print.css" rel="stylesheet" type="text/css" media="print">
+    <script language=javascript type=text/javascript>
+
+        function getHiddenValue()
+        {
+            //when the page loads
+            var hiddenValue = document.forms[0].openData.value; //get the value of the hidden field (should include the divs that are open).
+
+            if (hiddenValue != '')
+            {
+                var idArray = hiddenValue.split(','); //split up into an array
+                for (i = 0; i < idArray.length; i++) {
+                    //loop through the array
+                    var thisDiv = document.getElementById(idArray[i]) //get the div
+                    showHide(thisDiv, false); //Show it. Do not update the hidden value or it will wipe all of them out except for the first one.
+                }
+            }
+
+            //Add event listeners
+            if (document.getElementById('tabContent') != null)
+            {
+                var allTitles = document.getElementById('tabContent').getElementsByTagName('div'); //get all divs
+                var counter = 0;
+                for (i = 0; i < allTitles.length; i++) {
+                    //loop though them
+                    if (allTitles[i].className == 'titleBar') {
+                        //if it's a title bar...
+                        allTitles[i].onclick = function() {
+                            //then add the onclick function
+                            showHide(this);
+                        }
+                    }
+                }
+
+                var divTaxDue = document.getElementById('taxDue');
+
+                if (hiddenValue.indexOf('taxDue') >= 0)
+                {
+                    if (divTaxDue.style.display != 'none')
+                    {
+                        top.location = "#taxDue";
+                    }
+                }
+            }
+        }
+
+        function showHide(thisDiv, update)
+        {
+            if (thisDiv != null)
+            {
+                var icon = thisDiv.getElementsByTagName('img')[0];
+                var id = thisDiv.id + 'Details';
+                var details = document.getElementById(id);
+
+                if (details.style.display == 'none')
+                {
+                    details.style.display = 'block';
+                    icon.src = 'images/opened.gif';
+                    thisDiv.setAttribute('opened', true); //used by updateHidden() to see if the data is open
+                }
+                else
+                {
+                    details.style.display = 'none';
+                    icon.src = 'images/closed.gif';
+                    thisDiv.setAttribute('opened', false); //used by updateHidden() to see if the data is open
+                }
+                if (update != false) {
+                    //only update if the title was clicked on
+                    updateHidden();
+                }
+            }
+        }
+
+        function showHideAll(thisButton) {
+            var collapse = (thisButton.value == 'Expand All') ? false : true;
+            var opened = collapse ? false : true;
+            var src = collapse ? 'closed.gif' : 'opened.gif';
+            var state = collapse ? 'none' : 'block';
+            var newValue = collapse ? 'Expand All' : 'Collapse All';
+            var allDivs = document.getElementById('tabContent').getElementsByTagName('div');
+            for (i = 0; i < allDivs.length; i++) {
+                if (allDivs[i].className == 'details') {
+                    allDivs[i].style.display = state;
+                } else if (allDivs[i].className == 'titleBar') {
+                    allDivs[i].getElementsByTagName('img')[0].src = 'images/' + src;
+                    allDivs[i].setAttribute('opened', opened);
+                }
+            }
+            thisButton.value = newValue;
+            updateHidden();
+        }
+
+        function updateHidden() {
+            var hiddenValue = ''; //always rest to none so that the correct ids can be populated
+            var allTitles = document.getElementById('tabContent').getElementsByTagName('div'); //get all the divs
+            for (i = 0; i < allTitles.length; i++) {
+                //loop through the divs
+                if (allTitles[i].getAttribute('opened')) {
+                    //if it has the 'opened' attribute...
+                    if (hiddenValue != '') {
+                        //if there is already a value
+                        hiddenValue += ','; //add a comma for before the next one
+                    }
+                    hiddenValue += allTitles[i].id; //add the id to the value
+                }
+            }
+            document.forms[0].openData.value = hiddenValue; //update the hidden value
+
+        }
+        //window.status = document.forms[0].openData.value;//show in window status for testing
+
+        function addListeners() {
+            var allTitles = document.getElementById('tabContent').getElementsByTagName('div');
+            for (i = 0; i < allTitles.length; i++) {
+                if (allTitles[i].className == 'titleBar') {
+                    allTitles[i].onclick = function() {
+                        showHide(this);
+                    }
+                }
+            }
+        }
+    </script>
+</HEAD>
+<body onload=getHiddenValue()>
+<form name="Form1" method="post" action="Property.aspx?cid=56&amp;prop_id=114173" id="Form1">
+    <input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value=""/>
+    <input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value=""/>
+    <input type="hidden" name="__LASTFOCUS" id="__LASTFOCUS" value=""/>
+    <input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUKMTY4NzY5ODUzMw9kFgJmD2QWAgICD2QWCgIFD2QWAgICD2QWAgIBD2QWAmYPEGRkFgFmZAILDw8WAh4HVmlzaWJsZWhkZAINDw8WAh8AaGRkAhMPDxYCHwBoZGQCFQ8PFgIfAGhkZGRnXtdJK5i25ky3mCDVm77fgCnLLg=="/>
+
+    <script type="text/javascript">
+        //
+        var theForm = document.forms['Form1'];
+        if (!theForm) {
+            theForm = document.Form1;
+        }
+        function __doPostBack(eventTarget, eventArgument) {
+            if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+                theForm.__EVENTTARGET.value = eventTarget;
+                theForm.__EVENTARGUMENT.value = eventArgument;
+                theForm.submit();
+            }
+        }
+        // -->
+    </script>
+
+    <input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="74F12F38"/>
+    <input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEWFwL+lLTqBgK21urlDAKAuK2zAwKG5ZDeAgLf6rK3AwKB6tPMAQKB6sfhCAKB6ruFBwKc/cWtBAKc/bnBDAKc/e2pDgKc/cHOBgKc/bXiDQKc/amHBAKc/Z28AwKc/fHRCwKc/eX2AgKc/dmrCQL3xOuyDgL3xN/XBgLm6LzlDwLvnoWMDgKe8diOAQD7/NAG/LCUtEgS2WWLCYnV5wxg"/>
+    <input name="openData" type="hidden" id="openData" value="property"/>
+    <div id="pageControls">
+        <div id="header">
+            <h1>Comal CAD</h1>
+            <ul>
+                <li>
+                    <a id="header_PropertySearch" onmouseover="window.status='Property Search';return true;" onmouseout="window.status='';return true;" href="javascript:__doPostBack('header$PropertySearch','')" style="font-weight:bold;text-decoration:underline;">Property Search</a>
+                </li>
+                <li>
+                    <a id="header_MapSearch" onmouseover="window.status='Map Search';return true;" onmouseout="window.status='';return true;" href="javascript:__doPostBack('header$MapSearch','')">Map Search</a>
+                </li>
+                <li></li>
+                <li></li>
+            </ul>
+        </div>
+
+        <!-- HEADER -->
+        <!-- END HEADER -->
+
+        <div id="pageMessage"></div>
+        <div id="pageTitle">
+            <div class="right">
+                <tr id="propertyHeading_rowTaxYear">
+                    <td class="formLabel" style="width:120px;">Tax Year:&nbsp;</td>
+                    <td>
+                        <select name="propertyHeading:taxyear" onchange="javascript:setTimeout('__doPostBack(\'propertyHeading$taxyear\',\'\')', 0)" language="javascript" id="propertyHeading_taxyear">
+                            <option selected="selected" value="2022" certified="4/6/2022 12:00:00 AM">2022</option>
+                            <option value="2021" certified="4/7/2021 12:00:00 AM">2021</option>
+                            <option value="2020" certified="4/22/2020 12:00:00 AM">2020</option>
+                            <option value="2019" certified="4/1/2019 12:00:00 AM">2019</option>
+                            <option value="2018" certified="4/2/2018 12:00:00 AM">2018</option>
+                            <option value="2017" certified="5/1/2017 12:00:00 AM">2017</option>
+                            <option value="2016" certified="5/3/2016 12:00:00 AM">2016</option>
+                            <option value="2015" certified="4/30/2015 12:00:00 AM">2015</option>
+                            <option value="2014" certified="5/1/2014 12:00:00 AM">2014</option>
+                            <option value="2013" certified="4/30/2013 12:00:00 AM">2013</option>
+                            <option value="2012" certified="4/30/2012 12:00:00 AM">2012</option>
+                            <option value="2011" certified="4/28/2011 12:00:00 AM">2011</option>
+                            <option value="2010" certified="5/1/2010 12:00:00 AM">2010</option>
+                            <option value="2009" certified="5/1/2009 12:00:00 AM">2009</option>
+                            <option value="2008" certified="5/1/2008 12:00:00 AM">2008</option>
+
+                        </select>
+                    </td>
+                </tr>
+                <input type="submit" name="propertyHeading:newSearch" value="New Search" id="propertyHeading_newSearch" class="smallButton"/>
+            </div>
+            <h2>
+                <a id="propertyHeading_searchResults" onmouseover="window.status='Search Results';return true;" onmouseout="window.status='';return true;" href="javascript:__doPostBack('propertyHeading$searchResults','')">Property Search Results</a>
+                <span id="propertyHeading_propertyInfo"> > 114173 MONDELEZ INTERNATIONAL, INC. for Year 2022</span>
+            </h2>
+        </div>
+        <div id="tabNav">
+            <ul>
+                <li class="selected">
+                    <a id="propertyHeading_viewDetails" onmouseover="window.status='View Details';return true;" onmouseout="window.status='';return true;" href="javascript:__doPostBack('propertyHeading$viewDetails','')">
+                        <img src="images/viewdetails.gif"/>
+                        &nbsp;Details
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div id="tabContent">
+            <div class="screenOnly">
+                    <span class="right">
+                        <input type="button" name="showHide" value="Expand All" class="smallButton" style="width:85px;margin-right:5px;" onclick="showHideAll(this);"/>
+                    </span>
+                <p class="instructions">Click on a title bar to expand or collapse the information.</p>
+            </div>
+            <script language="javascript" type="text/javascript">
+                var win = '';
+                function openWindow(url, name, w, h)
+                {
+                    var left = (screen.width / 2) - w / 2;
+                    var top = (screen.height / 2) - h / 2;
+                    win = window.open(url, name, 'toolbar=no,location=no,directories=no,status=yes,menubar=no,scrollbars=no,resizable=yes,copyhistory=no,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',screenX=' + left + ',screenY=' + top);
+
+                    if (window.focus) {
+                        win.focus();
+                    }
+
+                    return false;
+
+                }
+            </script>
+            <div id="property" class="titleBar">
+                <h3>
+                    <img src="images/opened.gif"/>
+                    Property
+                </h3>
+            </div>
+            <div id="propertyDetails" class="details" style="display:none">
+                <table summary="Property Details" border="0">
+                    <tr>
+                        <td class="detailTitle" colspan="4">
+                            <h4>Account</h4>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width:10%;">Property ID:</td>
+                        <td>114173</td>
+                        <td style="width:10%;">Legal Description:</td>
+                        <td class="propertyDetailsLegalDescription">BUSINESS PERSONAL PROPERTY</td>
+                    </tr>
+                    <tr>
+                        <td>Geographic ID:</td>
+                        <td>2010000327700</td>
+                        <td>Zoning:</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Type:</td>
+                        <td>Personal</td>
+                        <td>Agent Code:</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Property Use Code:</td>
+                        <td>320P</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>Property Use Description:</td>
+                        <td></td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td class="detailTitle" colspan="4">
+                            <h4>Location</h4>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Address:</td>
+                        <td>
+                            1001 ASSEMBLY CIR
+                            <BR>
+                            SCHERTZ, TX 78154
+                        </td>
+                        <td>Mapsco:</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Neighborhood:</td>
+                        <td></td>
+                        <td>Map ID:</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Neighborhood CD:</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="detailTitle" colspan="4">
+                            <h4>Owner</h4>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Name:</td>
+                        <td>MONDELEZ INTERNATIONAL, INC.</td>
+                        <td>Owner ID:</td>
+                        <td>929037</td>
+                    </tr>
+                    <tr>
+                        <td>Mailing Address:</td>
+                        <td>
+                            C/O THE ALBANO GROUP
+                            <BR>
+                            PO BOX 1240
+                            <BR>
+                            MANCHESTER, NH 03105-1240
+                        </td>
+                        <td>% Ownership:</td>
+                        <td>100.0000000000%</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>
+                            <a href="#" onclick="javascript:openWindow('PopupCodesDescription.aspx?cid=56&CodeType=Exemptions', 'Exemptions', '450', '250');return true;">Exemptions:</a>
+                        </td>
+                        <td></td>
+                    </tr>
+                </table>
+            </div>
+            <div id="values" class="titleBar">
+                <h3>
+                    <img src="images/closed.gif"/>
+                    Values
+                </h3>
+            </div>
+            <div id="valuesDetails" class="details" style="display:none">
+                <table summary="Property Values" border="0">
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(+) Improvement Homesite Value:</td>
+                        <td>+</td>
+                        <td class="currency">$0</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(+) Improvement Non-Homesite Value:</td>
+                        <td>+</td>
+                        <td class="currency">$0</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(+) Land Homesite Value:</td>
+                        <td>+</td>
+                        <td class="currency">$0</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(+) Land Non-Homesite Value:</td>
+                        <td>+</td>
+                        <td class="currency">$0</td>
+                        <td>&nbsp;Ag / Timber Use Value</td>
+                    </tr>
+                    <tr>
+                        <td>(+) Agricultural Market Valuation:</td>
+                        <td>+</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                    </tr>
+                    <tr>
+                        <td>(+) Timber Market Valuation:</td>
+                        <td>+</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">--------------------------</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(=) Market Value:</td>
+                        <td>=</td>
+                        <td class="currency">$646,120</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(&ndash;) Ag or Timber Use Value Reduction:</td>
+                        <td>&ndash;</td>
+                        <td class="currency">$0</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">--------------------------</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(=) Appraised Value:</td>
+                        <td>=</td>
+                        <td class="currency">$646,120</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(&ndash;) HS Cap:</td>
+                        <td>&ndash;</td>
+                        <td class="currency">$0</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">--------------------------</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>(=) Assessed Value:</td>
+                        <td>=</td>
+                        <td class="currency">$646,120</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="taxingJurisdiction" class="titleBar">
+                <h3>
+                    <img src="images/closed.gif"/>
+                    Taxing Jurisdiction
+                </h3>
+            </div>
+            <div id="taxingJurisdictionDetails" class="details" style="display:none">
+                <table border="0">
+                    <tr>
+                        <td>Owner:</td>
+                        <td>MONDELEZ INTERNATIONAL, INC.</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>% Ownership:</td>
+                        <td>100.0000000000%</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>Total Value:</td>
+                        <td>N/A</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                </table>
+                <table class="tableData" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">
+                    <tr class="tableDataHeader">
+                        <th nowrap="nowrap">Entity</th>
+                        <th>Description</th>
+                        <th nowrap="nowrap">Tax Rate</th>
+                        <th nowrap="nowrap">Appraised Value</th>
+                        <th style="text-align:right;">Taxable Value</th>
+                        <th nowrap="nowrap">Estimated Tax</th>
+                        <th nowrap="nowrap">&nbsp;</th>
+                        <th nowrap="nowrap">&nbsp;</th>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td class="propertyTJDescription"></td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>046  </td>
+                        <td class="propertyTJDescription">COMAL COUNTY</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>046LR</td>
+                        <td class="propertyTJDescription">COMAL COUNTY LATERAL ROAD</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>CAD  </td>
+                        <td class="propertyTJDescription">CAD</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>CSCH </td>
+                        <td class="propertyTJDescription">CITY OF SCHERTZ</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>EDW  </td>
+                        <td class="propertyTJDescription">Edwards Water</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>SCIS </td>
+                        <td class="propertyTJDescription">COMAL ISD</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>ZZZ  </td>
+                        <td class="propertyTJDescription">Credit</td>
+                        <td>N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td class="currency">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>Total Tax Rate:</td>
+                        <td>N/A</td>
+                        <td>&nbsp;</td>
+                        <td></td>
+                        <td class="currency"></td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td></td>
+                        <td></td>
+                        <td>&nbsp;</td>
+                        <td>Taxes w/Current Exemptions:</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td></td>
+                        <td></td>
+                        <td>&nbsp;</td>
+                        <td>Taxes w/o Exemptions:</td>
+                        <td class="currency">N/A</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="improvementBuilding" class="titleBar">
+                <h3>
+                    <img src="images/closed.gif"/>
+                    Improvement / Building
+                </h3>
+            </div>
+            <div id="improvementBuildingDetails" class="details" style="display:none">
+                <table border="0">
+                    <tr>
+                        <td>No improvements exist for this property.</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div id="land" class="titleBar">
+                <h3>
+                    <img src="images/closed.gif"/>
+                    Land
+                </h3>
+            </div>
+            <div id="landDetails" class="details" style="display:none">
+                <table cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td>No land segments exist for this property.</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="rollHistory" class="titleBar">
+                <h3>
+                    <img src="images/closed.gif"/>
+                    Roll Value History
+                </h3>
+            </div>
+            <div id="rollHistoryDetails" class="details" style="display:none">
+                <table class="tableData" cellspacing="0" cellpadding="0" summary="Roll Value History" border="0" style="width:100%;border-collapse:collapse;">
+                    <tr class="tableDataHeader">
+                        <th>Year</th>
+                        <th>Improvements</th>
+                        <th>Land Market</th>
+                        <th>Ag Valuation</th>
+                        <th>Appraised</th>
+                        <th>HS Cap</th>
+                        <th>Assessed</th>
+                    </tr>
+                    <tr>
+                        <td>2022</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">646,120</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$646,120</td>
+                    </tr>
+                    <tr>
+                        <td>2021</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">3,455,640</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$3,455,640</td>
+                    </tr>
+                    <tr>
+                        <td>2020</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">3,569,080</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$3,569,080</td>
+                    </tr>
+                    <tr>
+                        <td>2019</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">2,668,830</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$2,668,830</td>
+                    </tr>
+                    <tr>
+                        <td>2018</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,670,810</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,670,810</td>
+                    </tr>
+                    <tr>
+                        <td>2017</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,894,180</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,894,180</td>
+                    </tr>
+                    <tr>
+                        <td>2016</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,891,880</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,891,880</td>
+                    </tr>
+                    <tr>
+                        <td>2015</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,419,730</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,419,730</td>
+                    </tr>
+                    <tr>
+                        <td>2014</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,378,140</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,378,140</td>
+                    </tr>
+                    <tr>
+                        <td>2013</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,394,840</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,394,840</td>
+                    </tr>
+                    <tr>
+                        <td>2012</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,405,110</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,405,110</td>
+                    </tr>
+                    <tr>
+                        <td>2011</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,415,380</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,415,380</td>
+                    </tr>
+                    <tr>
+                        <td>2010</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,634,870</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,634,870</td>
+                    </tr>
+                    <tr>
+                        <td>2009</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">1,623,500</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$1,623,500</td>
+                    </tr>
+                    <tr>
+                        <td>2008</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">0</td>
+                        <td class="currency">2,290,950</td>
+                        <td class="currency">$0</td>
+                        <td class="currency">$2,290,950</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="deedHistory" class="titleBar">
+                <h3>
+                    <img src="images/closed.gif"/>
+                    Deed History - (Last 3 Deed Transactions)
+                </h3>
+            </div>
+            <div id="deedHistoryDetails" class="details" style="display:none">
+                <table id="deedHistoryDetails_deedHistoryTable" class="tableData" cellspacing="0" cellpadding="0" summary="Deed History" border="0" style="border-collapse:collapse;">
+                    <tr class="tableDataHeader">
+                        <th>#</th>
+                        <th>Deed Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Grantor</th>
+                        <th>Grantee</th>
+                        <th>Volume</th>
+                        <th>Page</th>
+                        <th>Deed Number</th>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+        <div id="propertyFootnote_propInactiveNote" style="color:Red;margin:0px 0px 0px 5px;display:none;">This property is Inactive in the current search year but has taxes due in another year.</div>
+
+        <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+        </script>
+        <script type="text/javascript">
+            var pageTracker = _gat._getTracker("UA-6057032-4");
+            pageTracker._trackPageview();
+        </script>
+        <div id="footer">
+            <table border="0" style="width:100%;">
+                <tr>
+                </tr>
+                <tr>
+                    <td align="left">Website version: 1.2.2.33</td>
+                    <td align="center">Database last updated on: 4/30/2022 10:46 PM</td>
+                    <td align="right">&copy; N. Harris Computer Corporation</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</form>
+</body>
+</HTML>
+
