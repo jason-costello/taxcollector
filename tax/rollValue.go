@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jason-costello/taxcollector/storage/pgdb"
 )
 
 type RollValue struct {
@@ -51,4 +52,22 @@ func getRollValue(doc *goquery.Document) []RollValue {
 	})
 
 	return rollValues
+}
+func FromRollValueDBModel(rollValue []pgdb.RollValue) []RollValue {
+
+	var rv []RollValue
+
+	for _, r := range rollValue {
+
+		rv = append(rv, RollValue{
+			Year:         NullInt32ToString(r.Year),
+			Improvements: NullInt32ToString(r.Improvements),
+			LandMarket:   NullInt32ToString(r.LandMarket),
+			AgValuation:  NullInt32ToString(r.AgValuation),
+			Appraised:    NullInt32ToString(r.Appraised),
+			HomesteadCap: NullInt32ToString(r.HomesteadCap),
+			Assessed:     NullInt32ToString(r.Assessed),
+		})
+	}
+	return rv
 }

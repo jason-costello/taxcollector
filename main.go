@@ -10,6 +10,9 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/jason-costello/taxcollector/web"
+	_ "github.com/lib/pq"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/mux"
 	"github.com/jason-costello/taxcollector/proxies"
@@ -30,7 +33,7 @@ func main() {
 	taxDB = pgdb.New(db)
 	defer db.Close()
 
-	handler := NewHandler(taxDB)
+	handler := web.NewHandler(taxDB)
 
 	r := mux.NewRouter()
 	v1ApiRouter := r.PathPrefix("/v1/api").Subrouter()
@@ -76,9 +79,7 @@ func loadScraper() (*scraper.Scraper, error) {
 
 	hc := http.DefaultClient
 
-	urlsToScrape, err := readLines("urls-to-fetch.txt")
-
-	scraper := scraper.NewScraper(pc, &ua, db, hc, urlsToScrape)
+	scraper := scraper.NewScraper(pc, &ua, db, hc)
 
 	return scraper, nil
 

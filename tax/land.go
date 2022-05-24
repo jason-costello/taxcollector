@@ -1,9 +1,12 @@
 package tax
 
 import (
+	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jason-costello/taxcollector/storage/pgdb"
 )
 
 type Land struct {
@@ -53,4 +56,29 @@ func getLandInfo(doc *goquery.Document) []Land {
 	})
 
 	return lands
+}
+
+func NullFloat64ToString(f sql.NullFloat64) string {
+	if f.Valid {
+		return fmt.Sprint(f.Float64)
+	}
+	return ""
+}
+
+func FromLandDBModel(land []pgdb.Land) []Land {
+
+	var ll []Land
+	for _, l := range land {
+		ll = append(ll, Land{
+			Number:      NullInt32ToString(l.Number),
+			Type:        NullStringToString(l.LandType),
+			Description: NullStringToString(l.Description),
+			Acres:       NullFloat64ToString(l.Acres),
+			Sqft:        NullFloat64ToString(l.SquareFeet),
+			EffFront:    NullFloat64ToString(l.EffFront),
+			EffDepth:    NullFloat64ToString(l.EffDepth),
+			MarketValue: NullInt32ToString(l.MarketValue),
+		})
+	}
+	return ll
 }

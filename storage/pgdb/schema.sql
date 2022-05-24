@@ -21,11 +21,11 @@ alter sequence "main_roll_values_id_seq" owner to jc;
 
 create table jurisdictions
 (
-    id               serial
+    id              serial
         constraint jurisdictions_pk
             primary key,
-    entity           varchar(255),
-    description      text,
+    entity          varchar(255),
+    description     text,
     tax_rate        integer,
     appraised_value integer,
     taxable_value   integer,
@@ -70,10 +70,10 @@ create table properties
     legal_description    varchar(500),
     geographic_id        varchar(255),
     exemptions            varchar(255),
-    ownership_percentage varchar(255),
+    ownership_percentage double precision,
     mapsco_map_id         varchar(255),
-    longitude             numeric,
-    latitude              numeric,
+    longitude             double precision,
+    latitude              double precision,
     address_number       varchar(255) default 0 not null,
     address_line_two      varchar(255),
     city                  varchar(255),
@@ -150,11 +150,22 @@ create table improvements
     name         text,
     description  text,
     state_code  varchar(255),
-    living_area numeric,
+    living_area integer,
     value        integer,
     property_id integer
 );
 
 alter table improvements
     owner to jc;
+
+create table pending_urls
+(
+    url text not null
+        constraint pending_urls_pk
+            primary key
+);
+
+alter table pending_urls
+    owner to jc;
+
 

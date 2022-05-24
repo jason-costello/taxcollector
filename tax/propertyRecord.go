@@ -1,9 +1,12 @@
 package tax
 
 import (
+	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jason-costello/taxcollector/storage/pgdb"
 )
 
 type PropertyRecord struct {
@@ -43,7 +46,7 @@ func GetPropertyRecord(doc *goquery.Document) (PropertyRecord, error) {
 	}
 
 	propertyRecord.MapscoMapID = itemMap["mapscoMapID"].Value
-	propertyRecord.OwnershipPercentage = itemMap["ownershipPercentage"].Value
+	propertyRecord.OwnershipPercentage = strings.Replace(itemMap["ownershipPercentage"].Value, "%", "", 1)
 	propertyRecord.Exemptions = itemMap["exemptions"].Value
 	propertyRecord.GeographicID = itemMap["geographicID"].Value
 	propertyRecord.LegalDescription = itemMap["legalDescription"].Value
@@ -142,4 +145,49 @@ func loadPropertyDetailItems() map[string]PropertyDetailItem {
 	}
 
 	return detailItemMap
+}
+
+func NullStringToString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+func NullInt32ToInt32(ni sql.NullInt32) int32 {
+	if ni.Valid {
+		return ni.Int32
+	}
+	return 0
+}
+func NullInt32ToString(ni sql.NullInt32) string {
+	if ni.Valid {
+		return fmt.Sprint(ni.Int32)
+	}
+	return ""
+}
+func Int32ToString(i int32) string {
+	return fmt.Sprint(i)
+}
+func FromPropertyDBModel(property pgdb.Property) PropertyRecord {
+
+	return PropertyRecord{
+		PropertyID:          Int32ToString(property.ID),
+		OwnerID:             NullInt32ToString(property.OwnerID),
+		OwnerName:           NullStringToString(property.OwnerName),
+		OwnerMailingAddress: NullStringToString(property.OwnerMailingAddress),
+		Zoning:              NullStringToString(property.Zoning),
+		NeighborhoodCD:      NullStringToString(property.NeighborhoodCd),
+		Neighborhood:        NullStringToString(property.Neighborhood),
+		Address:             NullStringToString(property.Address),
+		LegalDescription:    NullStringToString(property.LegalDescription),
+		GeographicID:        NullStringToString(property.GeographicID),
+		Exemptions:          NullStringToString(property.Exemptions),
+		OwnershipPercentage: NullFloat64ToString(property.OwnershipPercentage),
+		MapscoMapID:         NullStringToString(property.MapscoMapID),
+		RollValue:           nil,
+		Land:                nil,
+		Improvements:        nil,
+		Jurisdictions:       nil,
+	}
+
 }

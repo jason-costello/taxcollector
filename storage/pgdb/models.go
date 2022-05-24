@@ -11,7 +11,7 @@ type Improvement struct {
 	Name        sql.NullString
 	Description sql.NullString
 	StateCode   sql.NullString
-	LivingArea  sql.NullString
+	LivingArea  sql.NullInt32
 	Value       sql.NullInt32
 	PropertyID  sql.NullInt32
 }
@@ -51,6 +51,10 @@ type Land struct {
 	PropertyID  sql.NullInt32
 }
 
+type PendingUrl struct {
+	Url string
+}
+
 type Property struct {
 	ID                  int32
 	OwnerID             sql.NullInt32
@@ -63,10 +67,10 @@ type Property struct {
 	LegalDescription    sql.NullString
 	GeographicID        sql.NullString
 	Exemptions          sql.NullString
-	OwnershipPercentage sql.NullString
+	OwnershipPercentage sql.NullFloat64
 	MapscoMapID         sql.NullString
-	Longitude           sql.NullString
-	Latitude            sql.NullString
+	Longitude           sql.NullFloat64
+	Latitude            sql.NullFloat64
 	AddressNumber       string
 	AddressLineTwo      sql.NullString
 	City                sql.NullString

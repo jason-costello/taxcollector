@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jason-costello/taxcollector/storage/pgdb"
 )
 
 type TaxingJurisdiction struct {
@@ -25,22 +26,23 @@ func getTaxingJurisdictions(doc *goquery.Document) []TaxingJurisdiction {
 				switch cellIndex {
 
 				case 0:
-					taxJur.Entity = strings.TrimSpace(strings.TrimSpace(cell.Text()))
+					taxJur.Entity = strings.TrimSpace(cell.Text())
 				case 1:
-					taxJur.Description = strings.TrimSpace(strings.TrimSpace(cell.Text()))
+					taxJur.Description = strings.TrimSpace(cell.Text())
 				case 2:
-					taxJur.TaxRate = strings.TrimSpace(strings.TrimSpace(cell.Text()))
+					taxJur.TaxRate = strings.TrimSpace(cell.Text())
 				case 3:
-					taxJur.AppraisedValue = strings.TrimSpace(strings.TrimSpace(cell.Text()))
+					taxJur.AppraisedValue = strings.TrimSpace(cell.Text())
 				case 4:
-					taxJur.TaxableValue = strings.TrimSpace(strings.TrimSpace(cell.Text()))
+					taxJur.TaxableValue = strings.TrimSpace(cell.Text())
 				case 5:
-					taxJur.EstimatedTax = strings.TrimSpace(strings.TrimSpace(cell.Text()))
+					taxJur.EstimatedTax = strings.TrimSpace(cell.Text())
 
 				default:
 				}
 
 			})
+
 			if taxJur.Entity != "" {
 				taxingJurisdictions = append(taxingJurisdictions, taxJur)
 			}
@@ -49,4 +51,20 @@ func getTaxingJurisdictions(doc *goquery.Document) []TaxingJurisdiction {
 	})
 	return taxingJurisdictions
 
+}
+func FromTaxingJurisdictionModel(tj []pgdb.Jurisdiction) []TaxingJurisdiction {
+
+	var tjs []TaxingJurisdiction
+
+	for _, t := range tj {
+		tjs = append(tjs, TaxingJurisdiction{
+			Entity:         NullStringToString(t.Entity),
+			Description:    NullStringToString(t.Description),
+			TaxRate:        NullInt32ToString(t.TaxRate),
+			AppraisedValue: NullInt32ToString(t.AppraisedValue),
+			TaxableValue:   NullInt32ToString(t.TaxableValue),
+			EstimatedTax:   NullInt32ToString(t.EstimatedTax),
+		})
+	}
+	return tjs
 }

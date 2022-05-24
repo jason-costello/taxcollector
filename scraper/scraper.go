@@ -12,43 +12,31 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jason-costello/taxcollector/proxies"
+	"github.com/jason-costello/taxcollector/storage/pgdb"
 	"github.com/jason-costello/taxcollector/tax"
 	"github.com/jason-costello/taxcollector/useragents"
 	"golang.org/x/net/publicsuffix"
 )
 
+// TODO:  Add flags to pull in db creds, worker count,
 type Scraper struct {
 	proxyClient     *proxies.ProxyClient
 	db              *sql.DB
+	pdb             *pgdb.Queries
 	userAgentClient *useragents.UserAgentClient
 	httpClient      *http.Client
 	currentProxy    proxies.Proxy
-	urlsToScrape    []string
 }
 
-type Job struct {
-	ProcessorID int
-	JobID       int
-	URL         string
-	// DB                 *sql.DB
-	// httpClient         *http.Client
-	// ProxyClient        *proxies.ProxyClient
-	Proxy              proxies.Proxy
-	UserAgent          string
-	Request            *http.Request
-	ResponseBodyBuffer *bytes.Buffer
-	PropertyRecord     tax.PropertyRecord
-	Duplicate          bool
-	Error              error
-}
-
-func NewScraper(proxyClient *proxies.ProxyClient, uac *useragents.UserAgentClient, db *sql.DB, httpClient *http.Client, urls []string) *Scraper {
+func NewScraper(proxyClient *proxies.ProxyClient, uac *useragents.UserAgentClient, db *sql.DB, httpClient *http.Client) *Scraper {
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		log.Fatal(err)
@@ -64,304 +52,72 @@ func NewScraper(proxyClient *proxies.ProxyClient, uac *useragents.UserAgentClien
 		proxyClient:     proxyClient,
 		userAgentClient: uac,
 		db:              db,
-		urlsToScrape:    urls,
+		pdb:             pgdb.New(db),
 	}
 }
 
-func (s *Scraper) Scrape() {
+func (s *Scraper) Scrape(urls []string) {
+	var workers = runtime.NumCPU()
 
-	gen := func(done <-chan interface{}, propURL ...string) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-			for i, u := range propURL {
-				job := Job{
-					JobID:              i,
-					URL:                u,
-					Proxy:              proxies.Proxy{},
-					UserAgent:          "",
-					Request:            nil,
-					ResponseBodyBuffer: &bytes.Buffer{},
-					PropertyRecord:     tax.PropertyRecord{},
-					Error:              nil,
-					Duplicate:          false,
-				}
-				select {
-				case <-done:
-					return
-				case jobStream <- job:
-				}
+	jobChannel := make(chan Job)
+
+	go func() {
+		for i, u := range urls {
+
+			var propID = ""
+			parts := strings.Split(u, "=")
+			if len(parts) > 1 {
+				propID = parts[2]
 			}
-		}()
-		return jobStream
-	}
-
-	checkIfDuplicate := func(done <-chan interface{}, processorID int, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				j.ProcessorID = processorID
-				if j.Error == nil {
-
-					exists, err := s.PropertyExists(j.URL)
-					if err != nil {
-						j.Error = err
-
-					} else if exists {
-						j.Duplicate = true
-						j.Error = errors.New("duplicate record")
-					}
-				}
-				select {
-				case <-done:
-					return
-				case jobStream <- j:
-
-				}
+			if propID == "" {
+				continue
 			}
-		}()
-
-		return jobStream
-	}
-	getProxy := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-
-		jobStream := make(chan Job)
-
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				if j.Error == nil {
-					j.Proxy, j.Error = s.proxyClient.GetNext()
-				}
-
-				select {
-				case <-done:
-					return
-				case jobStream <- j:
-				}
+			jobChannel <- Job{
+				ProcessorID:        0,
+				JobID:              i,
+				URL:                u,
+				Proxy:              proxies.Proxy{},
+				UserAgent:          "",
+				Request:            nil,
+				ResponseBodyBuffer: nil,
+				PropertyRecord:     tax.PropertyRecord{PropertyID: propID},
+				Duplicate:          false,
+				Error:              nil,
+				Scraper:            s,
 			}
+		}
+	}()
+	jobResultsChan := make(chan Job)
+	wg := &sync.WaitGroup{}
+	wg.Add(workers)
+	go func() {
+		wg.Wait()
+		close(jobResultsChan)
+	}()
 
-		}()
-		return jobStream
-	}
-	getUserAgent := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-
-			for j := range incomingJobStream {
-				if j.Error == nil {
-					j.UserAgent, j.Error = s.userAgentClient.GetRandomUserAgent()
-				}
-				select {
-				case <-done:
-					return
-				case jobStream <- j:
-
-				}
-			}
-		}()
-		return jobStream
-	}
-
-	buildRequest := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				if j.Error == nil {
-
-				}
-				select {
-				case <-done:
-					return
-				case jobStream <- j:
-
-				}
-			}
-		}()
-		return jobStream
-	}
-	pingPage := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-
-				if j.Error == nil {
-					var firstReq *http.Request
-					firstReq, j.Error = http.NewRequestWithContext(ctx, "GET", "https://propaccess.trueautomation.com/clientdb/?cid=56", nil)
-
-					if j.Error == nil {
-
-						var resp *http.Response
-						resp, j.Error = s.httpClient.Do(firstReq)
-						if j.Error == nil {
-							j.Error = s.proxyClient.MarkProxyAsBad(j.Proxy.IP)
-							dur := getRandomTimeoutDuration(10, 250)
-							time.Sleep(dur)
-						}
-						if j.Error == nil {
-							if resp.StatusCode > 399 || resp.StatusCode < 200 {
-								j.Error = errors.New(resp.Status)
-							}
-						}
-
-					}
-					select {
-					case <-done:
-						return
-					case jobStream <- j:
-
-					}
-				}
-			}
-		}()
-		return jobStream
-	}
-	propertyRequest := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				if j.Error == nil {
-					var req *http.Request
-					req, j.Error = http.NewRequest("GET", j.URL, nil)
-					if j.Error == nil {
-						req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-						req.Header.Set("Accept-Encoding", "gzip, deflate, br")
-						req.Header.Set("Host", "propaccess.trueautomation.com")
-						req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15")
-						req.Header.Set("Accept-Language", "en-US,en;q=0.9")
-						req.Header.Set("Referer", "https://propaccess.trueautomation.com/clientdb/SearchResults.aspx?cid=56")
-
-						detailResp, err := s.httpClient.Do(req)
-						if err != nil {
-							j.Error = err
-						} else {
-
-							b, err := io.ReadAll(detailResp.Body)
-							if err != nil {
-								j.Error = err
-							} else {
-								j.ResponseBodyBuffer = bytes.NewBuffer(b)
-							}
-
-							detailResp.Body.Close()
-						}
-					}
-					select {
-					case <-done:
-						return
-					case jobStream <- j:
-
-					}
-				}
-			}
-
-		}()
-		return jobStream
-	}
-
-	parseResponse := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				if j.Error == nil {
-
-					if j.ResponseBodyBuffer != nil {
-						j.PropertyRecord, j.Error = parseDetails(j.ResponseBodyBuffer)
-					}
-					select {
-					case <-done:
-						return
-					case jobStream <- j:
-
-					}
-				}
-			}
-		}()
-		return jobStream
-	}
-
-	writeToDB := func(done <-chan interface{}, incomingJobStream <-chan Job) <-chan Job {
-		jobStream := make(chan Job)
-		go func() {
-			defer close(jobStream)
-			for j := range incomingJobStream {
-				if j.Error == nil {
-					j.Error = s.AddPropertyRecordToDB(j.PropertyRecord)
-				}
-				select {
-				case <-done:
-					return
-				case jobStream <- j:
-
-				}
-			}
-		}()
-		return jobStream
-	}
-
-	fanIn := func(done <-chan interface{}, channels ...<-chan Job) <-chan Job {
-		var wg sync.WaitGroup
-		mplexStream := make(chan Job)
-
-		mplex := func(c <-chan Job) {
+	for i := 1; i <= workers; i++ {
+		go func(id int) {
 			defer wg.Done()
-			for i := range c {
-				select {
-				case <-done:
-					return
-				case mplexStream <- i:
-				}
+
+			for j := range jobChannel {
+				j.ProcessorID = id
+				j.Process()
+				jobResultsChan <- j
+				time.Sleep(time.Second)
+
 			}
-		}
-		wg.Add(len(channels))
-		for _, c := range channels {
-			go mplex(c)
-		}
-
-		go func() {
-			wg.Wait()
-			close(mplexStream)
-		}()
-
-		return mplexStream
-	} // end fan-in
-
-	done := make(chan interface{})
-	defer close(done)
-	jobStream := gen(done, s.urlsToScrape...)
-
-	procCount := 7
-	processors := make([]<-chan Job, procCount)
-
-	for i := 0; i < procCount; i++ {
-		processors[i] = writeToDB(done, parseResponse(done, propertyRequest(done, pingPage(done, buildRequest(done, getUserAgent(done, getProxy(done, checkIfDuplicate(done, i, jobStream))))))))
+		}(i)
 	}
 
-	var results []Job
-	// fanIn used to consolidate all the results to rs
-	for r := range fanIn(done, processors...) {
+	for r := range jobResultsChan {
 		if r.Error == nil {
-			fmt.Println("INFO : ", r.ProcessorID, r.JobID, r.URL)
-		} else {
-			fmt.Println("ERROR: ", r.ProcessorID, r.JobID, r.URL, r.Error)
+			r.Error = errors.New("No Error")
 		}
-		results = append(results, r)
-
+		fmt.Printf("worker: %d   job: %d propertyID: %s  final error: %s\n", r.ProcessorID, r.JobID, r.PropertyRecord.PropertyID, r.Error)
 	}
 
 }
-func (s *Scraper) GetURLs() []string {
-	return s.urlsToScrape
-}
+
 func (s *Scraper) PropertyExists(url string) (bool, error) {
 	if s.db == nil {
 		return true, errors.New("db is nil")
@@ -372,21 +128,25 @@ func (s *Scraper) PropertyExists(url string) (bool, error) {
 	}
 
 	propertyID := strings.TrimSpace(urlParts[1])
-	q := "select id from properties where id=? limit 1"
-	stmt, err := s.db.Prepare(q)
+	pid, err := strconv.Atoi(propertyID)
 	if err != nil {
 		return false, err
 	}
-	q = strings.Replace(q, "?", urlParts[1], -1)
-	// row := stmt.QueryRow(urlParts[1])
-	row := stmt.QueryRow(propertyID)
 
-	var pID string
-	row.Scan(&pID)
-	if pID == "" {
-		return false, nil
+	if pid == 0 {
+		return true, errors.New("invalid property id: 0")
 	}
-	return true, nil
+	prop, err := s.pdb.GetPropertyByID(context.Background(), int32(pid))
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			return false, nil
+		}
+		return false, err
+	}
+	if prop.Address.Valid && prop.Address.String != "" {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (s *Scraper) changeUserAgent(req *http.Request) error {
@@ -426,137 +186,188 @@ func parseDetails(b *bytes.Buffer) (tax.PropertyRecord, error) {
 	propertyRecord, err := tax.GetPropertyRecord(doc)
 	return propertyRecord, nil
 }
+func stringToNullInt32(s string) sql.NullInt32 {
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		i = 0
+	}
+	return sql.NullInt32{
+		Int32: int32(i),
+		Valid: true,
+	}
+}
 
-func insertLand(pr tax.PropertyRecord, tx *sql.Tx) error {
+func stringToFloat64(s string) sql.NullFloat64 {
+	i, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		i = 0.0
+	}
+	return sql.NullFloat64{
+		Float64: i,
+		Valid:   true,
+	}
+}
+
+func stringToNullString(s string) sql.NullString {
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+}
+func insertLand(pdb *pgdb.Queries, pr tax.PropertyRecord, tx *sql.Tx) error {
 
 	for _, i := range pr.Land {
 
-		query := "insert into land(number, type, description, acres, squareFeet, effFront, effDepth, marketValue, propertyID) values(?,?,?,?,?,?,?,?,?)"
-		stmt, err := tx.Prepare(query)
-		if err != nil {
+		landParams := pgdb.InsertLandParams{
+			Number:      stringToNullInt32(i.Number),
+			LandType:    stringToNullString(i.Type),
+			Description: stringToNullString(i.Description),
+			Acres:       stringToFloat64(i.Acres),
+			SquareFeet:  stringToFloat64(i.Sqft),
+			EffFront:    stringToFloat64(i.EffFront),
+			EffDepth:    stringToFloat64(i.EffDepth),
+			MarketValue: stringToNullInt32(i.MarketValue),
+			PropertyID:  stringToNullInt32(pr.PropertyID),
+		}
+		if err := pdb.WithTx(tx).InsertLand(context.Background(), landParams); err != nil {
+			tx.Rollback()
 			return err
 		}
-		if _, err := stmt.Exec(i.Number, i.Type, i.Description, i.Acres, i.Sqft, i.EffFront, i.EffDepth, i.MarketValue, pr.PropertyID); err != nil {
-			return err
-		}
+
 	}
 
 	return nil
 }
 
-func (s *Scraper) AddPropertyRecordToDB(pr tax.PropertyRecord) error {
+func (s *Scraper) AddPropertyRecordToDB(workerID, jobID int, pUrl string, pr tax.PropertyRecord) error {
 
 	tx, err := s.db.Begin()
 	if err != nil {
-
-		return err
+		return fmt.Errorf("worker: %d  job: %d propID: %s - error s.db.Begin() error: %w\n", workerID, jobID, pr.PropertyID, err)
 	}
 
-	err = insertPropertyRecord(pr, tx)
+	err = insertPropertyRecord(s.pdb, pr, tx)
 	if err != nil {
+		return fmt.Errorf("worker: %d  job: %d propID: %s - insertPropertyRecord error: %w\n", workerID, jobID, pr.PropertyID, err)
 		tx.Rollback()
 
 		return err
 	}
 
-	err = insertRollValues(pr, tx)
+	err = insertRollValues(s.pdb, pr, tx)
 	if err != nil {
+		return fmt.Errorf("worker: %d  job: %d  propID: %s - Status: insertRollValues error: %w\n", workerID, jobID, pr.PropertyID, err)
 		tx.Rollback()
 		return err
 	}
 
-	err = insertJurisdictions(pr, tx)
+	err = insertJurisdictions(s.pdb, pr, tx)
 	if err != nil {
+		return fmt.Errorf("worker: %d  job: %d propID: %s - Status: insertJurisdictions error: %w\n", workerID, jobID, pr.PropertyID, err)
 		tx.Rollback()
 		return err
 	}
 
-	err = insertImprovements(pr, tx)
+	err = insertImprovements(s.pdb, pr, tx)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return fmt.Errorf("worker: %d  job: %d  propID: %s - Status: insertImprovements error: %w\n", workerID, jobID, pr.PropertyID, err)
 	}
 
-	err = insertLand(pr, tx)
+	err = insertLand(s.pdb, pr, tx)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return fmt.Errorf("worker: %d  job: %d propID: %s - Status: insertLand error: %w\n", workerID, jobID, pr.PropertyID, err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("worker: %d  job: %d  propID: %s - Error on tx.Commit: %w\n", workerID, jobID, pr.PropertyID, err)
+	}
+	fmt.Printf("worker: %d  job: %d  propID: %s - All records committed\n", workerID, jobID, pr.PropertyID)
+
 	return nil
 }
 
-func insertImprovements(pr tax.PropertyRecord, tx *sql.Tx) error {
+func insertImprovements(pdb *pgdb.Queries, pr tax.PropertyRecord, tx *sql.Tx) error {
 
 	for _, i := range pr.Improvements {
+		params := pgdb.InsertImprovementParams{
+			Name:        stringToNullString(i.Name),
+			Description: stringToNullString(i.Description),
+			StateCode:   stringToNullString(i.StateCode),
+			LivingArea:  stringToNullInt32(i.LivingArea),
+			Value:       stringToNullInt32(i.Value),
+			PropertyID:  stringToNullInt32(pr.PropertyID),
+		}
 
-		iQuery := "insert into improvements (name, description, stateCode, livingArea, value, propertyID) values(?,?,?,?,?,?)"
-		stmt, err := tx.Prepare(iQuery)
+		id, err := pdb.WithTx(tx).InsertImprovement(context.Background(), params)
 		if err != nil {
-			return err
-		}
-		result, err := stmt.Exec(i.Name, i.Description, i.StateCode, i.LivingArea, i.Value, pr.PropertyID)
-		if err != nil {
-			return err
-		}
-		improveID, err := result.LastInsertId()
-		if err != nil {
+			tx.Rollback()
 			return err
 		}
 
 		for _, d := range i.Details {
-
-			dQuery := "insert into improvementDetail(improvementID, type, description, class, exteriorWall, yearBuilt, squareFeet) values (?,?,?,?,?,?,?)"
-			dStmt, err := tx.Prepare(dQuery)
-			if err != nil {
-				return err
+			paramDetails := pgdb.InsertImprovementDetailParams{
+				ImprovementID:   sql.NullInt32{Int32: id, Valid: true},
+				ImprovementType: stringToNullString(d.Type),
+				Description:     stringToNullString(d.Description),
+				Class:           stringToNullString(d.Class),
+				ExteriorWall:    stringToNullString(d.ExteriorWall),
+				YearBuilt:       stringToNullInt32(d.YearBuilt),
+				SquareFeet:      stringToNullInt32(d.SqFt),
 			}
-			if _, err := dStmt.Exec(improveID, d.Type, d.Description, d.Class, d.ExteriorWall, d.YearBuilt, d.SqFt); err != nil {
+
+			if err := pdb.WithTx(tx).InsertImprovementDetail(context.Background(), paramDetails); err != nil {
+				tx.Rollback()
 				return err
 			}
 
 		}
-
 	}
 	return nil
 }
 
-func insertJurisdictions(pr tax.PropertyRecord, tx *sql.Tx) error {
+func insertJurisdictions(pdb *pgdb.Queries, pr tax.PropertyRecord, tx *sql.Tx) error {
 	for _, j := range pr.Jurisdictions {
 
-		query := "insert into jurisdictions( entity, description, taxRate, appraisedValue, taxableValue, estimatedTax, propertyID) values(?,?,?,?,?,?,?)"
+		params := pgdb.InsertJurisdictionParams{
+			Entity:         sql.NullString{},
+			Description:    sql.NullString{},
+			TaxRate:        stringToNullInt32(j.TaxRate),
+			AppraisedValue: stringToNullInt32(j.AppraisedValue),
+			TaxableValue:   stringToNullInt32(j.TaxableValue),
+			EstimatedTax:   stringToNullInt32(j.EstimatedTax),
+			PropertyID:     stringToNullInt32(pr.PropertyID),
+		}
 
-		stmt, err := tx.Prepare(query)
-		if err != nil {
-			fmt.Println("error inserting jurisdictions: ", err)
+		if err := pdb.WithTx(tx).InsertJurisdiction(context.Background(), params); err != nil {
+			tx.Rollback()
 			return err
 		}
-		if _, err := stmt.Exec(j.Entity, j.Description, j.TaxRate, j.AppraisedValue, j.TaxableValue, j.EstimatedTax, pr.PropertyID); err != nil {
-			return err
-		}
-
 	}
 	return nil
 
 }
-func insertRollValues(pr tax.PropertyRecord, tx *sql.Tx) error {
+func insertRollValues(pdb *pgdb.Queries, pr tax.PropertyRecord, tx *sql.Tx) error {
 
 	for _, r := range pr.RollValue {
 
-		query := "insert into rollValues( year, improvements, landMarket, agValuation, appraised, homesteadCap, assessed, propertyID) values(?,?,?,?,?,?,?,?)"
-
-		stmt, err := tx.Prepare(query)
-		if err != nil {
-			fmt.Println("error inserting roll values: ", err)
-
-			return err
+		rollParams := pgdb.InsertRollValueParams{
+			Year:         stringToNullInt32(r.Year),
+			Improvements: stringToNullInt32(r.Improvements),
+			LandMarket:   stringToNullInt32(r.LandMarket),
+			AgValuation:  stringToNullInt32(r.AgValuation),
+			Appraised:    stringToNullInt32(r.Appraised),
+			HomesteadCap: stringToNullInt32(r.HomesteadCap),
+			Assessed:     stringToNullInt32(r.Assessed),
+			PropertyID:   stringToNullInt32(pr.PropertyID),
 		}
 
-		if _, err := stmt.Exec(r.Year, r.Improvements, r.LandMarket, r.AgValuation, r.Appraised, r.HomesteadCap, r.Assessed, pr.PropertyID); err != nil {
+		if err := pdb.WithTx(tx).InsertRollValue(context.Background(), rollParams); err != nil {
+			tx.Rollback()
 			return err
 		}
-
 	}
 	return nil
 }
@@ -572,26 +383,197 @@ func getRandomTimeoutDuration(min, max int) time.Duration {
 	return d
 }
 
-func insertPropertyRecord(pr tax.PropertyRecord, tx *sql.Tx) error {
-	query := `insert into properties(id,ownerID,ownerName,ownerMailingAddress,
-										zoning,neighborhoodCD,neighborhood,
-										address, legalDescription, geographicID, exemptions,
-										ownershipPercentage, mapscoMapID) 
-			values(?,?,?,?,?,?,?,?,?,?,?,?,?)`
+func stringToInt32(s string) int32 {
 
-	stmt, err := tx.Prepare(query)
-	if err != nil {
-		return err
+	i, e := strconv.Atoi(s)
+	if e != nil {
+		return int32(0)
 	}
-	_, err = stmt.Exec(pr.PropertyID, pr.OwnerID, pr.OwnerName, pr.OwnerMailingAddress,
-		pr.Zoning, pr.NeighborhoodCD, pr.Neighborhood,
-		pr.Address, pr.LegalDescription, pr.GeographicID, pr.Exemptions,
-		pr.OwnershipPercentage, pr.MapscoMapID)
+	return int32(i)
 
-	if err != nil {
+}
+func insertPropertyRecord(pdb *pgdb.Queries, pr tax.PropertyRecord, tx *sql.Tx) error {
+
+	propParams := pgdb.InsertPropertyRecordParams{
+		ID:                  stringToInt32(pr.PropertyID),
+		OwnerID:             stringToNullInt32(pr.OwnerID),
+		OwnerName:           stringToNullString(pr.OwnerName),
+		OwnerMailingAddress: stringToNullString(pr.OwnerMailingAddress),
+		Zoning:              stringToNullString(pr.Zoning),
+		NeighborhoodCd:      stringToNullString(pr.NeighborhoodCD),
+		Neighborhood:        stringToNullString(pr.Neighborhood),
+		Address:             stringToNullString(pr.Address),
+		LegalDescription:    stringToNullString(pr.LegalDescription),
+		GeographicID:        stringToNullString(pr.GeographicID),
+		Exemptions:          stringToNullString(pr.Exemptions),
+		OwnershipPercentage: stringToFloat64(pr.OwnershipPercentage),
+		MapscoMapID:         stringToNullString(pr.MapscoMapID),
+	}
+	if err := pdb.WithTx(tx).InsertPropertyRecord(context.Background(), propParams); err != nil {
+		fmt.Printf("propID: %s     Err property insert:  %s\n", pr.PropertyID, err)
+		fmt.Printf("%#+v\n", propParams)
+		tx.Rollback()
 		return err
 	}
 
 	return nil
 
+}
+
+type Job struct {
+	ProcessorID        int
+	JobID              int
+	URL                string
+	Proxy              proxies.Proxy
+	UserAgent          string
+	Request            *http.Request
+	ResponseBodyBuffer *bytes.Buffer
+	PropertyRecord     tax.PropertyRecord
+	Duplicate          bool
+	Error              error
+	Scraper            *Scraper
+}
+
+func (j *Job) ProcessError(removeURL bool, fun string, nerr error) error {
+	if removeURL {
+		if err := j.Scraper.pdb.RemovePendingURL(context.Background(), j.URL); err != nil {
+			return err
+		}
+	}
+	fmt.Printf("worker: %d   job: %d   propertyID: %s  function: %s  error during processing: %s\n", j.ProcessorID, j.JobID, j.PropertyRecord.PropertyID, fun, nerr)
+	return nil
+}
+func (j *Job) Process() {
+
+	var propID int
+	var property pgdb.Property
+
+	if j.PropertyRecord.PropertyID == "" {
+		j.ProcessError(false, "strconv.Atoi(j.PropertyRecord.PropertyID)", errors.New("no property record id set"))
+		return
+
+	}
+	propID, j.Error = strconv.Atoi(j.PropertyRecord.PropertyID)
+	if j.Error != nil {
+		j.ProcessError(false, "strconv.Atoi(j.PropertyRecord.PropertyID)", j.Error)
+		return
+	}
+
+	property, j.Error = j.Scraper.pdb.GetPropertyByID(context.Background(), int32(propID))
+	if j.Error != nil {
+		if j.Error.Error() != "sql: no rows in result set" {
+			j.ProcessError(true, "GetPropertyByID", j.Error)
+			return
+		}
+	}
+
+	if property.ID == int32(propID) {
+		j.Error = errors.New("duplicate ID")
+		j.ProcessError(true, fmt.Sprintf("propertyID: %d == propID: %d ", property.ID, propID), j.Error)
+		return
+	}
+
+	j.Proxy, j.Error = j.Scraper.proxyClient.GetNext()
+	if j.Error != nil {
+		j.ProcessError(false, "proxyClient.GetNext()", j.Error)
+		return
+	}
+
+	fmt.Printf("worker: %d   jobID: %d propID: %s   Getting user agent\n", j.ProcessorID, j.JobID, j.PropertyRecord.PropertyID)
+	j.UserAgent, j.Error = j.Scraper.userAgentClient.GetRandomUserAgent()
+	if j.Error != nil {
+		j.ProcessError(false, "userAgentClient.GetRandomUserAgent()", j.Error)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var firstReq *http.Request
+	firstReq, j.Error = http.NewRequestWithContext(ctx, "GET", "https://propaccess.trueautomation.com/clientdb/?cid=56", nil)
+	if j.Error != nil {
+		j.ProcessError(false, "http.NewRequestWithContext", j.Error)
+		return
+	}
+	var resp *http.Response
+	resp, j.Error = j.Scraper.httpClient.Do(firstReq)
+	if j.Error != nil {
+		fmt.Printf("worker: %d   jobID: %d  Bad proxy\n", j.ProcessorID, j.JobID)
+		j.Error = j.Scraper.proxyClient.MarkProxyAsBad(j.Proxy.IP)
+		dur := getRandomTimeoutDuration(10, 100)
+		time.Sleep(dur)
+	}
+	if j.Error != nil {
+		j.ProcessError(false, "http.proxyClient.MarkProxyAsBad", j.Error)
+		return
+	}
+	if resp.StatusCode > 399 || resp.StatusCode < 200 {
+		j.Error = errors.New(resp.Status)
+		j.ProcessError(false, "http.proxyClient.MarkProxyAsBad", j.Error)
+		return
+
+	}
+
+	var req *http.Request
+	req, j.Error = http.NewRequest("GET", j.URL, nil)
+	if j.Error != nil {
+		j.ProcessError(false, "http.NewRequest", j.Error)
+		return
+	}
+
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	req.Header.Set("Host", "propaccesj.Scraper.trueautomation.com")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Referer", "https://propaccesj.Scraper.trueautomation.com/clientdb/SearchResultj.Scraper.aspx?cid=56")
+	fmt.Printf("worker: %d   jobID: %d  Property Request\n", j.ProcessorID, j.JobID)
+
+	var detailResp *http.Response
+	detailResp, j.Error = j.Scraper.httpClient.Do(req)
+
+	if j.Error != nil {
+		j.ProcessError(false, "j.Scraper.httpClient.Do", j.Error)
+		return
+	}
+
+	var b []byte
+	b, j.Error = io.ReadAll(detailResp.Body)
+	if j.Error != nil {
+		j.ProcessError(false, "io.ReadAll(detailResp.Body)", j.Error)
+		return
+	}
+	j.ResponseBodyBuffer = bytes.NewBuffer(b)
+
+	detailResp.Body.Close()
+
+	if j.ResponseBodyBuffer == nil {
+		j.Error = errors.New("nil response body")
+		j.ProcessError(false, "j.ResponseBodyBuffer == nil", j.Error)
+		return
+	}
+
+	fmt.Printf("worker: %d   jobID: %d  parsing property details\n", j.ProcessorID, j.JobID)
+	j.PropertyRecord, j.Error = parseDetails(j.ResponseBodyBuffer)
+	if j.Error != nil {
+		j.ProcessError(false, "parseDetails(j.ResponseBodyBuffer)", j.Error)
+		return
+	}
+
+	fmt.Printf("worker: %d   jobID: %d  adding records to database\n", j.ProcessorID, j.JobID)
+
+	if j.Error = j.Scraper.AddPropertyRecordToDB(j.ProcessorID, j.JobID, j.URL, j.PropertyRecord); j.Error != nil {
+		j.ProcessError(false, "j.Scraper.AddPropertyRecordToDB()", j.Error)
+		return
+	}
+
+	if j.Error = j.Scraper.pdb.RemovePendingURL(context.Background(), j.URL); j.Error != nil {
+		j.ProcessError(false, "j.Scraper.pdb.RemovePendingUR", j.Error)
+		return
+	}
+
+	if j.Error == nil {
+		j.Error = errors.New("No Errors")
+	}
+	fmt.Printf("worker: %d  jobID: %d  procID:  %d   finalErrors: %s\n", j.ProcessorID, j.JobID, j.ProcessorID, j.Error)
 }

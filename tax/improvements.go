@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jason-costello/taxcollector/storage/pgdb"
 )
 
 type Improvement struct {
@@ -73,9 +74,9 @@ func getImprovement(tbl *goquery.Selection) Improvement {
 			case 3:
 				improvement.StateCode = strings.TrimSpace(cell.Text())
 			case 5:
-				improvement.LivingArea = strings.TrimSpace(cell.Text())
+				improvement.LivingArea = strings.TrimSpace(strings.Replace(cell.Text(), " sqft", "", 1))
 			case 7:
-				improvement.Value = strings.TrimSpace(cell.Text())
+				improvement.Value = strings.TrimSpace(strings.Replace(strings.Replace(cell.Text(), "$", "", 1), ",", "", -1))
 
 			}
 		})
@@ -105,7 +106,7 @@ func getImprovementDetail(tbl *goquery.Selection) []ImprovDetail {
 				case 5:
 					detail.YearBuilt = strings.TrimSpace(cell.Text())
 				case 6:
-					detail.SqFt = strings.TrimSpace(cell.Text())
+					detail.SqFt = strings.TrimSpace(strings.Replace(cell.Text(), " sqft", "", 1))
 
 				}
 
@@ -116,4 +117,32 @@ func getImprovementDetail(tbl *goquery.Selection) []ImprovDetail {
 		}
 	})
 	return improvementDetails
+}
+func FromImprovementModel(i pgdb.Improvement) Improvement {
+
+	return Improvement{
+		Name:        Int32ToString(i.ID),
+		Description: NullStringToString(i.Description),
+		StateCode:   NullStringToString(i.StateCode),
+		LivingArea:  NullInt32ToString(i.LivingArea),
+		Value:       NullInt32ToString(i.Value),
+		Details:     nil,
+	}
+}
+
+func FromImprovementDetailDBModel(id []pgdb.ImprovementDetail) []ImprovDetail {
+
+	var ids []ImprovDetail
+
+	for _, i := range id {
+		ids = append(ids, ImprovDetail{
+			Type:         NullStringToString(i.ImprovementType),
+			Description:  NullStringToString(i.Description),
+			Class:        NullStringToString(i.Class),
+			ExteriorWall: NullStringToString(i.ExteriorWall),
+			YearBuilt:    NullInt32ToString(i.YearBuilt),
+			SqFt:         NullInt32ToString(i.SquareFeet),
+		})
+	}
+	return ids
 }

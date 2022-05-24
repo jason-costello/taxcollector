@@ -8,6 +8,60 @@ import (
 	"database/sql"
 )
 
+const getDistinctNeighborhoods = `-- name: GetDistinctNeighborhoods :many
+Select Distinct neighborhood from properties order by neighborhood asc
+`
+
+func (q *Queries) GetDistinctNeighborhoods(ctx context.Context) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getDistinctNeighborhoods)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var neighborhood sql.NullString
+		if err := rows.Scan(&neighborhood); err != nil {
+			return nil, err
+		}
+		items = append(items, neighborhood)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDistinctStreets = `-- name: GetDistinctStreets :many
+Select Distinct street from properties order by street asc
+`
+
+func (q *Queries) GetDistinctStreets(ctx context.Context) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getDistinctStreets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var street sql.NullString
+		if err := rows.Scan(&street); err != nil {
+			return nil, err
+		}
+		items = append(items, street)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getImprovementByID = `-- name: GetImprovementByID :one
 SELECT id, name, description, state_code, living_area, value, property_id FROM improvements
 WHERE id = $1 limit 1
@@ -51,7 +105,6 @@ func (q *Queries) GetImprovementDetail(ctx context.Context, id int32) (Improveme
 
 const getImprovementDetails = `-- name: GetImprovementDetails :many
 
-
 SELECT id, improvement_id, improvement_type, description, class, exterior_wall, year_built, square_feet FROM improvement_detail
 WHERE improvement_id = $1
 `
@@ -91,7 +144,7 @@ func (q *Queries) GetImprovementDetails(ctx context.Context, improvementID sql.N
 
 const getImprovementsByPropertyID = `-- name: GetImprovementsByPropertyID :many
 SELECT id, name, description, state_code, living_area, value, property_id FROM improvements
-WHERE property_id = $1 limit 1
+WHERE property_id = $1
 `
 
 func (q *Queries) GetImprovementsByPropertyID(ctx context.Context, propertyID sql.NullInt32) ([]Improvement, error) {
@@ -164,7 +217,7 @@ func (q *Queries) GetJurisdictionsByPropertyID(ctx context.Context, propertyID s
 
 const getLandByPropertyID = `-- name: GetLandByPropertyID :many
 SELECT id, number, land_type, description, acres, square_feet, eff_front, eff_depth, market_value, property_id FROM land
-WHERE property_id = $1 limit 1
+WHERE property_id = $1
 `
 
 func (q *Queries) GetLandByPropertyID(ctx context.Context, propertyID sql.NullInt32) ([]Land, error) {
@@ -285,6 +338,33 @@ func (q *Queries) GetLandByType(ctx context.Context, landType sql.NullString) ([
 	return items, nil
 }
 
+const getNeighborhoodsLike = `-- name: GetNeighborhoodsLike :many
+Select  distinct neighborhood from properties where Upper(neighborhood) like concat(Upper($1)::text,'%') order by neighborhood asc
+`
+
+func (q *Queries) GetNeighborhoodsLike(ctx context.Context, upper string) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getNeighborhoodsLike, upper)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var neighborhood sql.NullString
+		if err := rows.Scan(&neighborhood); err != nil {
+			return nil, err
+		}
+		items = append(items, neighborhood)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPropertyByID = `-- name: GetPropertyByID :one
 SELECT id, owner_id, owner_name, owner_mailing_address, zoning, neighborhood_cd, neighborhood, address, legal_description, geographic_id, exemptions, ownership_percentage, mapsco_map_id, longitude, latitude, address_number, address_line_two, city, street, county, state FROM properties
 WHERE id = $1 limit 1
@@ -369,6 +449,95 @@ func (q *Queries) GetPropertyByNeighborhood(ctx context.Context, neighborhood sq
 	return items, nil
 }
 
+const getPropertyByStreet = `-- name: GetPropertyByStreet :many
+Select id, owner_id, owner_name, owner_mailing_address, zoning, neighborhood_cd, neighborhood, address, legal_description, geographic_id, exemptions, ownership_percentage, mapsco_map_id, longitude, latitude, address_number, address_line_two, city, street, county, state from properties where UPPER(street) = UPPER($1) order by address_number,street,city asc
+`
+
+func (q *Queries) GetPropertyByStreet(ctx context.Context, upper string) ([]Property, error) {
+	rows, err := q.db.QueryContext(ctx, getPropertyByStreet, upper)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Property
+	for rows.Next() {
+		var i Property
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.OwnerName,
+			&i.OwnerMailingAddress,
+			&i.Zoning,
+			&i.NeighborhoodCd,
+			&i.Neighborhood,
+			&i.Address,
+			&i.LegalDescription,
+			&i.GeographicID,
+			&i.Exemptions,
+			&i.OwnershipPercentage,
+			&i.MapscoMapID,
+			&i.Longitude,
+			&i.Latitude,
+			&i.AddressNumber,
+			&i.AddressLineTwo,
+			&i.City,
+			&i.Street,
+			&i.County,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRandomURLs = `-- name: GetRandomURLs :many
+SELECT url  FROM pending_urls
+ORDER BY RANDOM()
+LIMIT $1
+`
+
+func (q *Queries) GetRandomURLs(ctx context.Context, limit int32) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getRandomURLs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, err
+		}
+		items = append(items, url)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRemainingURLCount = `-- name: GetRemainingURLCount :one
+Select count(url) from pending_urls
+`
+
+func (q *Queries) GetRemainingURLCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getRemainingURLCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getRollValuesByPropertyID = `-- name: GetRollValuesByPropertyID :many
 Select id, year, improvements, land_market, ag_valuation, appraised, homestead_cap, assessed, property_id from roll_values
 where property_id = $1
@@ -405,6 +574,249 @@ func (q *Queries) GetRollValuesByPropertyID(ctx context.Context, propertyID sql.
 		return nil, err
 	}
 	return items, nil
+}
+
+const getStreetsLike = `-- name: GetStreetsLike :many
+Select  distinct street from properties where street like concat($1::text,'%') order by street asc
+`
+
+func (q *Queries) GetStreetsLike(ctx context.Context, dollar_1 string) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getStreetsLike, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var street sql.NullString
+		if err := rows.Scan(&street); err != nil {
+			return nil, err
+		}
+		items = append(items, street)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getValidProxy = `-- name: GetValidProxy :one
+select ip, lastused, uses
+from proxies
+where is_bad = 0
+order by lastused asc, uses asc
+limit 1
+`
+
+type GetValidProxyRow struct {
+	Ip       string
+	Lastused sql.NullString
+	Uses     sql.NullInt32
+}
+
+func (q *Queries) GetValidProxy(ctx context.Context) (GetValidProxyRow, error) {
+	row := q.db.QueryRowContext(ctx, getValidProxy)
+	var i GetValidProxyRow
+	err := row.Scan(&i.Ip, &i.Lastused, &i.Uses)
+	return i, err
+}
+
+const insertImprovement = `-- name: InsertImprovement :one
+insert into improvements (name, description, state_code, living_area, value, property_id) values($1,$2,$3,$4,$5,$6) RETURNING id
+`
+
+type InsertImprovementParams struct {
+	Name        sql.NullString
+	Description sql.NullString
+	StateCode   sql.NullString
+	LivingArea  sql.NullInt32
+	Value       sql.NullInt32
+	PropertyID  sql.NullInt32
+}
+
+func (q *Queries) InsertImprovement(ctx context.Context, arg InsertImprovementParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, insertImprovement,
+		arg.Name,
+		arg.Description,
+		arg.StateCode,
+		arg.LivingArea,
+		arg.Value,
+		arg.PropertyID,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertImprovementDetail = `-- name: InsertImprovementDetail :exec
+insert into improvement_detail(improvement_id, improvement_type, description, class, exterior_wall, year_built, square_feet) values ($1,$2,$3,$4,$5,$6,$7)
+`
+
+type InsertImprovementDetailParams struct {
+	ImprovementID   sql.NullInt32
+	ImprovementType sql.NullString
+	Description     sql.NullString
+	Class           sql.NullString
+	ExteriorWall    sql.NullString
+	YearBuilt       sql.NullInt32
+	SquareFeet      sql.NullInt32
+}
+
+func (q *Queries) InsertImprovementDetail(ctx context.Context, arg InsertImprovementDetailParams) error {
+	_, err := q.db.ExecContext(ctx, insertImprovementDetail,
+		arg.ImprovementID,
+		arg.ImprovementType,
+		arg.Description,
+		arg.Class,
+		arg.ExteriorWall,
+		arg.YearBuilt,
+		arg.SquareFeet,
+	)
+	return err
+}
+
+const insertJurisdiction = `-- name: InsertJurisdiction :exec
+insert into jurisdictions( entity, description, tax_rate, appraised_value, taxable_value, estimated_tax, property_id) values($1,$2,$3,$4,$5,$6,$7)
+`
+
+type InsertJurisdictionParams struct {
+	Entity         sql.NullString
+	Description    sql.NullString
+	TaxRate        sql.NullInt32
+	AppraisedValue sql.NullInt32
+	TaxableValue   sql.NullInt32
+	EstimatedTax   sql.NullInt32
+	PropertyID     sql.NullInt32
+}
+
+func (q *Queries) InsertJurisdiction(ctx context.Context, arg InsertJurisdictionParams) error {
+	_, err := q.db.ExecContext(ctx, insertJurisdiction,
+		arg.Entity,
+		arg.Description,
+		arg.TaxRate,
+		arg.AppraisedValue,
+		arg.TaxableValue,
+		arg.EstimatedTax,
+		arg.PropertyID,
+	)
+	return err
+}
+
+const insertLand = `-- name: InsertLand :exec
+insert into land(number, land_type, description, acres, square_feet, eff_front, eff_depth, market_value, property_id) values($1,$2,$3,$4,$5,$6,$7,$8,$9)
+`
+
+type InsertLandParams struct {
+	Number      sql.NullInt32
+	LandType    sql.NullString
+	Description sql.NullString
+	Acres       sql.NullFloat64
+	SquareFeet  sql.NullFloat64
+	EffFront    sql.NullFloat64
+	EffDepth    sql.NullFloat64
+	MarketValue sql.NullInt32
+	PropertyID  sql.NullInt32
+}
+
+func (q *Queries) InsertLand(ctx context.Context, arg InsertLandParams) error {
+	_, err := q.db.ExecContext(ctx, insertLand,
+		arg.Number,
+		arg.LandType,
+		arg.Description,
+		arg.Acres,
+		arg.SquareFeet,
+		arg.EffFront,
+		arg.EffDepth,
+		arg.MarketValue,
+		arg.PropertyID,
+	)
+	return err
+}
+
+const insertPropertyRecord = `-- name: InsertPropertyRecord :exec
+insert into properties(id,owner_id,owner_name,owner_mailing_address,
+                       zoning,neighborhood_cd,neighborhood,
+                       address, legal_description, geographic_id, exemptions,
+                       ownership_percentage, mapsco_map_id)
+values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+`
+
+type InsertPropertyRecordParams struct {
+	ID                  int32
+	OwnerID             sql.NullInt32
+	OwnerName           sql.NullString
+	OwnerMailingAddress sql.NullString
+	Zoning              sql.NullString
+	NeighborhoodCd      sql.NullString
+	Neighborhood        sql.NullString
+	Address             sql.NullString
+	LegalDescription    sql.NullString
+	GeographicID        sql.NullString
+	Exemptions          sql.NullString
+	OwnershipPercentage sql.NullFloat64
+	MapscoMapID         sql.NullString
+}
+
+func (q *Queries) InsertPropertyRecord(ctx context.Context, arg InsertPropertyRecordParams) error {
+	_, err := q.db.ExecContext(ctx, insertPropertyRecord,
+		arg.ID,
+		arg.OwnerID,
+		arg.OwnerName,
+		arg.OwnerMailingAddress,
+		arg.Zoning,
+		arg.NeighborhoodCd,
+		arg.Neighborhood,
+		arg.Address,
+		arg.LegalDescription,
+		arg.GeographicID,
+		arg.Exemptions,
+		arg.OwnershipPercentage,
+		arg.MapscoMapID,
+	)
+	return err
+}
+
+const insertRollValue = `-- name: InsertRollValue :exec
+insert into roll_values( year, improvements, land_market, ag_valuation, appraised, homestead_cap, assessed, property_id) values($1,$2,$3,$4,$5,$6,$7,$8)
+`
+
+type InsertRollValueParams struct {
+	Year         sql.NullInt32
+	Improvements sql.NullInt32
+	LandMarket   sql.NullInt32
+	AgValuation  sql.NullInt32
+	Appraised    sql.NullInt32
+	HomesteadCap sql.NullInt32
+	Assessed     sql.NullInt32
+	PropertyID   sql.NullInt32
+}
+
+func (q *Queries) InsertRollValue(ctx context.Context, arg InsertRollValueParams) error {
+	_, err := q.db.ExecContext(ctx, insertRollValue,
+		arg.Year,
+		arg.Improvements,
+		arg.LandMarket,
+		arg.AgValuation,
+		arg.Appraised,
+		arg.HomesteadCap,
+		arg.Assessed,
+		arg.PropertyID,
+	)
+	return err
+}
+
+const isExistingProperty = `-- name: IsExistingProperty :one
+select exists(select 1 from properties where id = $1)
+`
+
+func (q *Queries) IsExistingProperty(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isExistingProperty, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listProperties = `-- name: ListProperties :many
@@ -461,6 +873,15 @@ func (q *Queries) ListProperties(ctx context.Context, arg ListPropertiesParams) 
 	return items, nil
 }
 
+const removePendingURL = `-- name: RemovePendingURL :exec
+Delete from pending_urls where url = $1
+`
+
+func (q *Queries) RemovePendingURL(ctx context.Context, url string) error {
+	_, err := q.db.ExecContext(ctx, removePendingURL, url)
+	return err
+}
+
 const updatePropertySetAddressParts = `-- name: UpdatePropertySetAddressParts :exec
 Update properties set address_number = $1, address_line_two = $2, street = $3, city = $4, county = $5, state = $6
 where id = $7
@@ -486,5 +907,20 @@ func (q *Queries) UpdatePropertySetAddressParts(ctx context.Context, arg UpdateP
 		arg.State,
 		arg.ID,
 	)
+	return err
+}
+
+const updateProxyLastUsedTime = `-- name: UpdateProxyLastUsedTime :exec
+update proxies set lastused = $1, uses = $2 where ip = $3
+`
+
+type UpdateProxyLastUsedTimeParams struct {
+	Lastused sql.NullString
+	Uses     sql.NullInt32
+	Ip       string
+}
+
+func (q *Queries) UpdateProxyLastUsedTime(ctx context.Context, arg UpdateProxyLastUsedTimeParams) error {
+	_, err := q.db.ExecContext(ctx, updateProxyLastUsedTime, arg.Lastused, arg.Uses, arg.Ip)
 	return err
 }
